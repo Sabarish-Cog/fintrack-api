@@ -1,11 +1,13 @@
-package com.fintrack.fintrack_api.transactions.service;
+package com.fintrack.fintrack_api.transactions.repository;
 
 import com.fintrack.fintrack_api.transactions.model.Transaction;
-import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
-    List<Transaction> findByUserId(String userId);
+    List<Transaction> findByUserId(Long userId);
+    void deleteByUserId(Long userId);
 }

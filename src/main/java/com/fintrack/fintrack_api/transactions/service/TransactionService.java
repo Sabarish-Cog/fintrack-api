@@ -1,37 +1,56 @@
 package com.fintrack.fintrack_api.transactions.service;
 
 import com.fintrack.fintrack_api.transactions.model.Transaction;
-import java.time.LocalDateTime;
-import java.util.List;
+import com.fintrack.fintrack_api.transactions.repository.TransactionRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
-@Transactional
+@RequiredArgsConstructor
+@Slf4j
 public class TransactionService {
 
     private final TransactionRepository transactionRepository;
 
-    public TransactionService(TransactionRepository transactionRepository) {
-        this.transactionRepository = transactionRepository;
+    /**
+     * Create a new transaction
+     *
+     * @param transaction the transaction to create
+     * @return the created transaction with generated ID
+     */
+    @Transactional
+    public Transaction create(Transaction transaction) {
+        log.info("Creating transaction for userId: {}", transaction.getUserId());
+        Transaction savedTransaction = transactionRepository.save(transaction);
+        log.info("Transaction created successfully with id: {}", savedTransaction.getId());
+        return savedTransaction;
     }
 
-    public Transaction createTransaction(Transaction transaction) {
-        Transaction toSave = Transaction.builder()
-                .userId(transaction.getUserId())
-                .amount(transaction.getAmount())
-                .description(transaction.getDescription())
-                .createdAt(transaction.getCreatedAt() == null ? LocalDateTime.now() : transaction.getCreatedAt())
-                .build();
-        return transactionRepository.save(toSave);
-    }
-
+    /**
+     * Retrieve all transactions for a specific user
+     *
+     * @param userId the user ID
+     * @return list of transactions for the user
+     */
     @Transactional(readOnly = true)
-    public List<Transaction> getTransactionsByUser(String userId) {
+    public List<Transaction> getByUser(Long userId) {
+        log.debug("Fetching transactions for userId: {}", userId);
         return transactionRepository.findByUserId(userId);
     }
 
-    public void deleteAllTransactions() {
-        transactionRepository.deleteAll();
+    /**
+     * Delete all transactions for a specific user
+     *
+     * @param userId the user ID
+     */
+    @Transactional
+    public void deleteAll(Long userId) {
+        log.warn("Deleting all transactions for userId: {}", userId);
+        transactionRepository.deleteByUserId(userId);
+        log.info("All transactions deleted for userId: {}", userId);
     }
 }
