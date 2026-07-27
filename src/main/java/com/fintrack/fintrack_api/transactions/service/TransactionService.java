@@ -1,13 +1,17 @@
 package com.fintrack.fintrack_api.transactions.service;
 
+import com.fintrack.fintrack_api.common.exception.ResourceNotFoundException;
+import com.fintrack.fintrack_api.transactions.dto.TransactionCreateRequest;
 import com.fintrack.fintrack_api.transactions.model.Transaction;
 import com.fintrack.fintrack_api.transactions.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -16,41 +20,50 @@ public class TransactionService {
 
     private final TransactionRepository transactionRepository;
 
-    /**
-     * Create a new transaction
-     *
-     * @param transaction the transaction to create
-     * @return the created transaction with generated ID
-     */
     @Transactional
-    public Transaction create(Transaction transaction) {
-        log.info("Creating transaction for userId: {}", transaction.getUserId());
+    public Transaction create(Long userId, TransactionCreateRequest request) {
+        Objects.requireNonNull(userId, "userId must not be null");
+        Objects.requireNonNull(request, "request must not be null");
+
+        log.info("Creating transaction for userId={}", userId);
+
+        Transaction transaction = Transaction.builder()
+                .userId(userId)
+                .description(request.getDescription())
+                .amount(request.getAmount())
+                .type(request.getType())
+                .build();
+
         Transaction savedTransaction = transactionRepository.save(transaction);
-        log.info("Transaction created successfully with id: {}", savedTransaction.getId());
+        log.info("Transaction created successfully for userId={} id={}", userId, savedTransaction.getId());
         return savedTransaction;
     }
 
-    /**
-     * Retrieve all transactions for a specific user
-     *
-     * @param userId the user ID
-     * @return list of transactions for the user
-     */
     @Transactional(readOnly = true)
-    public List<Transaction> getByUser(Long userId) {
-        log.debug("Fetching transactions for userId: {}", userId);
-        return transactionRepository.findByUserId(userId);
+    public Page<Transaction> getByUser(Long userId, Pageable pageable) {
+        Objects.requireNonNull(userId, "userId must not be null");
+        Objects.requireNonNull(pageable, "pageable must not be null");
+
+        log.debug("Fetching transactions for userId={} page={} size={}", userId, pageable.getPageNumber(), pageable.getPageSize());
+        return transactionRepository.findByUserId(userId, pageable);
     }
 
-    /**
-     * Delete all transactions for a specific user
-     *
-     * @param userId the user ID
-     */
+    @Transactional(readOnly = true)
+    public Transaction getById(Long userId, Long transactionId) {
+        Objects.requireNonNull(userId, "userId must not be null");
+        Objects.requireNonNull(transactionId, "transactionId must not be null");
+
+        return transactionRepository.findByIdAndUserId(transactionId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found for userId=" + userId + " and transactionId=" + transactionId));
+    }
+
     @Transactional
-    public void deleteAll(Long userId) {
-        log.warn("Deleting all transactions for userId: {}", userId);
-        transactionRepository.deleteByUserId(userId);
-        log.info("All transactions deleted for userId: {}", userId);
+    public long deleteAll(Long userId) {
+        Objects.requireNonNull(userId, "userId must not be null");
+
+        log.warn("Deleting all transactions for userId={}", userId);
+        long deletedCount = transactionRepository.deleteByUserId(userId);
+        log.info("Deleted {} transactions for userId={}", deletedCount, userId);
+        return deletedCount;
     }
 }
